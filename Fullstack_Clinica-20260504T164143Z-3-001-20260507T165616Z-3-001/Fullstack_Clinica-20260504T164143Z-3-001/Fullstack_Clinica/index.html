@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<link rel="stylesheet" href="style.css">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style> /* CSS */
+        #container {
+            display: flex;
+            gap: 20px;
+        }
+
+        #divPaciente, 
+        #divMedico, 
+        #consultar {
+            flex: 1;
+            border: 1px solid #312c2c;
+            padding: 10px;
+        }
+    </style>
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="container">
+        <div id="divPaciente">
+            <h1>LISTA DE PACIENTES</h1>
+            <ul id="lista-pacientes">
+
+            </ul>
+        </div>
+        <div id="divMedico">
+            <h1>LISTA DE MÉDICOS</h1>
+            <ul id="lista-medicos">
+            </ul>
+        </div>
+
+        <div id="consultar">
+            <h1>Pesquisar consulta</h1>
+            <input type="text" id="nomePaciente" placeholder="nomePaciente">
+            <button id="btn" value="Pesquisar" onclick="buscarNome()">🔍</button>
+            <div id="pesquisa-consulta">
+                <ul id="filtro-pesquisa">
+
+                </ul>
+            </div>
+        </div>
+
+        <div id="inserir">
+            <h1>Cadastrar Paciente</h1>
+            <input type="text" id="novo-paciente" placeholder="nomePaciente">
+            <button id="btn" value="Pesquisar" onclick="cadastrarPaciente()">Cadastrar</button>
+            <button id="atualizar" value="Atualizar" onclick="atualizarPaciente()">Atualizar</button>
+        </div>    
+    </div>
+
+
+
+</body>
+
+</html>
+<script>
+fetch('http://localhost:5000/pacientes')
+.then(response => response.json())
+.then(pacientes => {
+    const lista = document.getElementById('lista-pacientes')
+
+    pacientes.forEach(c => {
+        const ol = document.createElement('ol')
+        ol.innerHTML = `${c.nomePaciente}
+        
+        <button onclick="prepararEdicao('${c.id}','${c.nomePaciente}')">Editar</button> 
+        <button onclick="removerPaciente('${c.id}')">Excluir</button>
+        `
+        lista.appendChild(ol)
+    })
+
+})
+
+fetch('http://localhost:5000/medicos')
+.then(response => response.json())
+.then(x => {
+    const lista = document.getElementById('lista-medicos')
+
+    x.forEach(c => {
+        const ol = document.createElement('ol')
+        ol.innerHTML = `${c.nome} - ${c.especialidade}`
+        lista.appendChild(ol)
+    })
+
+})
+
+async function buscarNome() {
+    const nomeDigitado = document.getElementById('nomePaciente').value.toLowerCase()
+    console.log(nomeDigitado);
+    
+
+   
+
+    const pacientes =   await fetch('http://localhost:5000/pacientes').then(r => r.json())
+    const medicos =     await fetch('http://localhost:5000/medicos').then(r => r.json())
+    const consultas =   await fetch('http://localhost:5000/consultas').then(r => r.json())
+
+    const resultado = consultas.map(consulta => {
+        const paciente = pacientes.find(p => p.id === consulta.idPaciente)
+        const medico = medicos.find(m => m.id === consulta.idMedico)
+
+        return {
+            nomePaciente: paciente?.nomePaciente,
+            nomeMedico: medico?.nome,
+            especialidade: medico?.especialidade,
+            data: consulta?.data
+        }
+
+        
+    })
+
+    .filter(item => item.nomePaciente.toLowerCase().includes(nomeDigitado))
+
+    const apresentar = document.getElementById('filtro-pesquisa')
+    
+    apresentar.innerHTML = ''
+
+    resultado.forEach(item => {
+        const ol = document.createElement('ol')
+        ol.innerHTML = `${item.nomePaciente} - ${item.nomeMedico} - ${item.especialidade} ${item.data}`
+        apresentar.appendChild(ol)
+    })
+    
+
+}
+
+async function cadastrarPaciente () {
+
+    const pacienteNovo = document.getElementById('novo-paciente').value.toLowerCase()
+
+    await fetch('http://localhost:5000/pacientes', {
+        method:'POST', //método utilizado
+        headers:{
+           "Content-Type": "application/json" //  flnd q o tipo de dado enviado vai ser json
+        },
+        body: JSON.stringify({ // o corpo do json vai ser pacienteNovo
+            nomePaciente: pacienteNovo
+        })
+    })
+
+    .then(response => response.json()) // me traga o json!
+    .then(dados =>{
+        alert('Paciente Cadastrado com sucesso!')
+        console.log(dados);
+    })
+}
+
+let pacienteEditando = null; //variavel global 
+
+function prepararEdicao(id,nome){
+    document.getElementById('novo-paciente').value = nome
+   
+    pacienteEditando = id //essa variavel vai receber o id
+
+}
+    async function atualizarPaciente(){
+        if(!pacienteEditando){ //se for falso,faça :
+            alert("Clique no editar primeiro,animal!")
+            return
+         }
+            const nome = document.getElementById('novo-paciente').value //pegando o valor do input
+
+            await fetch(`http://localhost:5000/pacientes/${pacienteEditando}`,{
+             method : 'PUT', 
+             headers : {
+                'Content-Type':'application/json'
+             },
+             body:JSON.stringify({
+                nomePaciente:nome
+
+             })
+            })
+            
+            alert("Usuário Atualizado com Sucesso!")
+           
+            
+        }
+    async function removerPaciente(id){
+       const confirmar = confirm("Deseja excluir esse paciente?")
+        if(!confirmar) return 
+
+        await fetch(`http://localhost:5000/pacientes/${id}`,{
+            method: 'DELETE'
+        })
+        alert("Usuário removido com sucesso!")
+    }
+
+
+
+
+</script>
+
